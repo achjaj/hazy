@@ -6,5 +6,5 @@ Uncertainty propagation calculator
 * [PySide2](https://wiki.qt.io/Qt_for_Python)
 
 <p align="center">
-  <img src="screenshots/screenshot-text.png"/>
+  <img src="screenshots/screenshot.png"/>
 </p>

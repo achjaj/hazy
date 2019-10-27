@@ -289,9 +289,9 @@ class Window(QMainWindow):
             error = self.model.item(i, 2)
 
             if symbol is not None and value is not None:
-                values[symbol.text()] = float(value.text())
+                values[symbol.text()] = value.text()
             if symbol is not None and error is not None:
-                values["u_" + symbol.text()] = float(error.text())
+                values["u_" + symbol.text()] = error.text()
 
         return values
 
