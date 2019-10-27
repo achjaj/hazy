@@ -5,15 +5,15 @@ import sys
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
-from os import rename
 from pathlib import Path
 import traceback
 from multiprocessing import Pool, cpu_count
 from sympy import simplify as simplifyExpr
-import time
+
 
 def simJob(expr):
     return simplifyExpr(expr)
+
 
 class ExprView(QFrame):
     def __init__(self, parent, prompt, compute):
@@ -63,7 +63,6 @@ class ExprView(QFrame):
         second.setLayout(waitLayout)
         self.stacked.addWidget(second)
 
-
     def showExpression(self, expr):
         tempFile = QTemporaryFile("hazy-")
         if tempFile.open():
@@ -81,7 +80,8 @@ class ExprView(QFrame):
                 self.dialog.showMessage("Cannot show expression!\n" + traceback.format_exc())
 
     def save(self):
-        fileName = QFileDialog.getSaveFileName(self, "Save expression", str(Path.home()), "LaTex (*.tex);;PNG image (*.png)")
+        fileName = QFileDialog.getSaveFileName(self, "Save expression", str(Path.home()),
+                                               "LaTex (*.tex);;PNG image (*.png)")
         try:
             if fileName[0] != "":
                 if fileName[1] == "LaTex (*.tex)":
@@ -110,7 +110,6 @@ class ExprView(QFrame):
             self.compute.setEnabled(False)
             self.pool = Pool(processes=cpu_count() - 1)
             self.pool.apply_async(simJob, (self.current,), callback=self.poolCallback)
-
 
     def cancel(self):
         self.pool.terminate()
@@ -179,7 +178,6 @@ class Window(QMainWindow):
         inlayout.addWidget(self.input)
         inholder = QWidget()
         inholder.setLayout(inlayout)
-        #vlayout.addLayout(inlayout)
 
         self.symInput = QLineEdit()
         self.symInput.setPlaceholderText("Comma separated vyriables")
@@ -189,7 +187,6 @@ class Window(QMainWindow):
         self.cmpButton.clicked.connect(self.compute)
 
         self.evalButton = QPushButton("Eval")
-        self.evalButton.setEnabled(False)
         self.evalButton.clicked.connect(self.eval)
 
         blayout = QHBoxLayout()
@@ -224,6 +221,17 @@ class Window(QMainWindow):
 
         return True
 
+    def evalTest(self):
+        if not hasattr(self, "finalExpr") or self.finalExpr is None:
+            self.dialog.showMessage("No expression!")
+            return False
+
+        values = self.getValues()
+        if not values:
+            self.dialog.showMessage("No values!")
+
+        return values
+
     def compute(self):
         if not self.cmpTest():
             return
@@ -233,17 +241,19 @@ class Window(QMainWindow):
             self.expr, self.finalExpr = hazy.compute(self.data)
             self.preview.showExpression(self.expr)
             self.final.showExpression(self.finalExpr)
-            if "values" in self.data:
-                self.evalButton.setEnabled(True)
         except:
             e = sys.exc_info()[0]
             print(traceback.format_exc())
             self.dialog.showMessage("Cannot compute!\n" + traceback.format_exc())
 
     def eval(self):
+        values = self.evalTest()
+        if not values:
+            return
+
         try:
-            value = hazy.eval(self.expr, self.data)
-            error = hazy.eval(self.finalExpr, self.data)
+            value = hazy.eval(self.expr, values)
+            error = hazy.eval(self.finalExpr, values)
             self.resLabel.setText("Numerical result: " + str(value) + "+-" + str(error))
         except:
             e = sys.exc_info()[0]
@@ -253,17 +263,9 @@ class Window(QMainWindow):
     def getData(self):
         data = {}
 
-        expr = {}
-        expr["format"] = self.typeBox.currentText().lower()
-        expr["value"] = self.input.toPlainText()
-
+        expr = {"format": self.typeBox.currentText().lower(), "value": self.input.toPlainText()}
         data["expr"] = expr
-
         data["symbols"] = self.symInput.text().split(",")
-
-        values = self.getValues()
-        if values:
-            data["values"] = self.getValues()
 
         return data
 
@@ -281,6 +283,7 @@ class Window(QMainWindow):
                 values["u_" + symbol.text()] = float(error.text())
 
         return values
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
