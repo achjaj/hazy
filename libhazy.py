@@ -4,7 +4,7 @@ import io
 
 def saveToImg(name, expr):
     f = open(name, "wb")
-    sympy.preview(expr, viewer="BytesIO", outputbuffer=f)
+    sympy.preview(expr, viewer="BytesIO", outputbuffer=f, euler=False)
     f.close()
 
 def saveToLaTex(name, expr):
