@@ -130,8 +130,6 @@ class Window(QMainWindow):
 
         self.values = QTableView()
         self.values.setModel(self.model)
-        self.values.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.values.customContextMenuRequested.connect(self.menu)
 
         upholder, downholder = self.construct_left()
         leftholder = QSplitter()
@@ -139,8 +137,29 @@ class Window(QMainWindow):
         leftholder.addWidget(upholder)
         leftholder.addWidget(downholder)
 
+        addButton = QPushButton("+")
+        addButton.clicked.connect(self.addRow)
+
+        removeButton = QPushButton("-")
+        removeButton.clicked.connect(self.removeRow)
+
+        clearButton = QPushButton("Clear")
+        clearButton.clicked.connect(self.clearValues)
+
+        buttonsLayout = QHBoxLayout()
+        buttonsLayout.addWidget(addButton)
+        buttonsLayout.addWidget(removeButton)
+        buttonsLayout.addWidget(clearButton)
+
+        rightLayout = QVBoxLayout()
+        rightLayout.addWidget(self.values)
+        rightLayout.addLayout(buttonsLayout)
+
+        rightholder = QWidget()
+        rightholder.setLayout(rightLayout)
+
         main.addWidget(leftholder)
-        main.addWidget(self.values)
+        main.addWidget(rightholder)
         self.setMinimumSize(800, 600)
         self.dialog = QErrorMessage()
 
@@ -150,19 +169,10 @@ class Window(QMainWindow):
     def removeRow(self):
         index = QInputDialog.getInt(self, "Set row index", "Row index:", 1, 1, self.model.rowCount())
         if index[1]:
-            self.model.takeRow(index[0] - 1)
+            self.model.removeRow(index[0] - 1)
 
-    def menu(self, pos):
-        menu = QMenu()
-
-        addAction = menu.addAction("Add row")
-        removeAction = menu.addAction("Remove row")
-
-        action = menu.exec_(self.mapToGlobal(pos))
-        if action == addAction:
-            self.addRow()
-        elif action == removeAction:
-            self.removeRow()
+    def clearValues(self):
+        self.model.removeRows(0, self.model.rowCount())
 
     def construct_left(self):
         vlayout = QVBoxLayout()
