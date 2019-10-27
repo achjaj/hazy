@@ -5,63 +5,22 @@ import sys
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
+from PySide2.QtUiTools import *
 from pathlib import Path
 import traceback
 from multiprocessing import Pool, cpu_count
 from sympy import simplify as simplifyExpr
 
-
 def simJob(expr):
     return simplifyExpr(expr)
 
 
-class ExprView(QFrame):
-    def __init__(self, parent, prompt, compute):
+class ExprView(QStackedWidget):
+    def __init__(self, parent):
         super(ExprView, self).__init__(parent)
-        self.stacked = QStackedWidget()
-        mainLayout = QVBoxLayout()
-        mainLayout.addWidget(self.stacked)
-        self.setLayout(mainLayout)
-
-        self.compute = compute
-
-        first = QWidget()
-        self.stacked.addWidget(first)
-        layout = QVBoxLayout()
-        first.setLayout(layout)
-
-        self.button = QPushButton("Save")
-        self.button.clicked.connect(self.save)
-        self.button.setEnabled(False)
-
-        self.simButton = QPushButton("Simplify")
-        self.simButton.clicked.connect(self.simplify)
-        self.simButton.setEnabled(False)
-
-        self.label = QLabel(prompt)
-        area = QScrollArea()
-        area.setBackgroundRole(QPalette.Dark)
-        area.setWidget(self.label)
-        area.setWidgetResizable(True)
-
-        layout.addWidget(area)
-        layout.addWidget(self.button)
-        layout.addWidget(self.simButton)
-
-        self.setFrameStyle(6)
-        self.dialog = QErrorMessage()
-
-        indicator = QProgressBar()
-        indicator.setRange(0, 0)
-        cancel = QPushButton("Cancel")
-        cancel.clicked.connect(self.cancel)
-        waitLayout = QVBoxLayout()
-        waitLayout.addWidget(indicator)
-        waitLayout.addWidget(cancel)
-
-        second = QWidget()
-        second.setLayout(waitLayout)
-        self.stacked.addWidget(second)
+        loader = QUiLoader()
+        self.ui = loader.load("exprview.ui", self)
+        self.ui.saveButton.clicked.connect(self.save)
 
     def showExpression(self, expr):
         tempFile = QTemporaryFile("hazy-")
@@ -72,8 +31,8 @@ class ExprView(QFrame):
                 hazy.saveToImg(tempFile.fileName(), expr)
                 picture = QPixmap(tempFile.fileName())
                 self.label.setPixmap(picture)
-                self.button.setEnabled(True)
-                self.simButton.setEnabled(True)
+                self.ui.saveButton.setEnabled(True)
+                self.simplifiedButton.setEnabled(True)
             except:
                 e = sys.exc_info()[0]
                 print(traceback.format_exc())
@@ -116,6 +75,7 @@ class ExprView(QFrame):
         self.pool.join()
         self.stacked.setCurrentIndex(0)
         self.compute.setEnabled(True)
+
 
 
 class Window(QMainWindow):
@@ -298,6 +258,15 @@ class Window(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = Window()
+    loader = QUiLoader()
+    loader.registerCustomWidget(ExprView)
+
+    mainFile = QFile("mainwindow.ui")
+    mainFile.open(QFile.ReadOnly)
+    window = loader.load(mainFile)
+
+    mainFile.close()
+    #window = ExprView(None)
     window.show()
+
     sys.exit(app.exec_())
