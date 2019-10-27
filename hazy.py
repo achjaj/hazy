@@ -194,8 +194,9 @@ class Window(QMainWindow):
         blayout.addWidget(self.evalButton)
         vlayout.addLayout(blayout)
 
-        self.resLabel = QLabel("Numerical result: <no data>")
-        vlayout.addWidget(self.resLabel)
+        self.result = QLineEdit()
+        self.result.setPlaceholderText("Numerical result")
+        vlayout.addWidget(self.result)
 
         self.preview = ExprView(self, "Input preview", self.cmpButton)
 
@@ -254,7 +255,7 @@ class Window(QMainWindow):
         try:
             value = hazy.eval(self.expr, values)
             error = hazy.eval(self.finalExpr, values)
-            self.resLabel.setText("Numerical result: " + str(value) + "+-" + str(error))
+            self.result.setText(str(value) + "+-" + str(error))
         except:
             e = sys.exc_info()[0]
             print(traceback.format_exc())
