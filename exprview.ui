@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ExprView</class>
+ <class>View</class>
  <widget class="QStackedWidget" name="View">
   <property name="geometry">
    <rect>
@@ -16,25 +16,13 @@
   <widget class="QWidget" name="page">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QScrollArea" name="scrollArea">
-      <property name="widgetResizable">
-       <bool>true</bool>
-      </property>
-      <widget class="QWidget" name="scrollAreaWidgetContents">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>392</width>
-         <height>239</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout"/>
-      </widget>
-     </widget>
+     <widget class="QGraphicsView" name="imageView"/>
     </item>
     <item>
      <widget class="QPushButton" name="saveButton">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="text">
        <string>Save</string>
       </property>
@@ -42,6 +30,9 @@
     </item>
     <item>
      <widget class="QPushButton" name="simplifyButton">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="text">
        <string>Simplify</string>
       </property>
@@ -90,22 +81,5 @@
   </widget>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>saveButton</sender>
-   <signal>clicked()</signal>
-   <receiver>ExprView</receiver>
-   <slot>test()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>203</x>
-     <y>271</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>203</x>
-     <y>167</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

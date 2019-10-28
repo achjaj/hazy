@@ -21,6 +21,12 @@ class ExprView(QStackedWidget):
         loader = QUiLoader()
         self.ui = loader.load("exprview.ui", self)
         self.ui.saveButton.clicked.connect(self.save)
+        self.ui.simplifyButton.clicked.connect(self.simplify)
+        self.ui.cancelButton.clicked.connect(self.cancel)
+
+        self.imageScene = QGraphicsScene()
+        self.ui.imageView.setScene(self.imageScene)
+        self.dialog = QErrorMessage()
 
     def showExpression(self, expr):
         tempFile = QTemporaryFile("hazy-")
@@ -30,11 +36,10 @@ class ExprView(QStackedWidget):
                 self.current = expr
                 hazy.saveToImg(tempFile.fileName(), expr)
                 picture = QPixmap(tempFile.fileName())
-                self.label.setPixmap(picture)
+                self.imageScene.addPixmap(picture)
                 self.ui.saveButton.setEnabled(True)
-                self.simplifiedButton.setEnabled(True)
+                self.ui.simplifyButton.setEnabled(True)
             except:
-                e = sys.exc_info()[0]
                 print(traceback.format_exc())
                 self.dialog.showMessage("Cannot show expression!\n" + traceback.format_exc())
 
@@ -53,8 +58,8 @@ class ExprView(QStackedWidget):
             self.dialog.showMessage("Cannot export expression!\n" + traceback.format_exc())
 
     def poolCallback(self, result):
-        self.stacked.setCurrentIndex(0)
-        self.compute.setEnabled(True)
+        self.setCurrentIndex(0)
+        #self.compute.setEnabled(True)
         self.showExpression(result)
 
     def simplify(self):
@@ -65,63 +70,61 @@ class ExprView(QStackedWidget):
         ret = msgBox.exec()
 
         if ret == QMessageBox.Yes:
-            self.stacked.setCurrentIndex(1)
-            self.compute.setEnabled(False)
+            self.setCurrentIndex(1)
+            #self.compute.setEnabled(False)
             self.pool = Pool(processes=cpu_count() - 1)
             self.pool.apply_async(simJob, (self.current,), callback=self.poolCallback)
 
     def cancel(self):
         self.pool.terminate()
         self.pool.join()
-        self.stacked.setCurrentIndex(0)
+        self.setCurrentIndex(0)
         self.compute.setEnabled(True)
 
+    def wheelEvent(self, event):
+        if hasattr(self, "current"):
+            zoomIn = 1.2
+            zoomOut = 1 / zoomIn
+
+            oldPos = self.ui.imageView.mapToScene(event.pos())
+
+            if event.angleDelta().y() > 0:
+                factor = zoomIn
+            else:
+                factor = zoomOut
+
+            self.ui.imageView.scale(factor, factor)
+
+            newPos = self.ui.imageView.mapToScene(event.pos())
+            delta = newPos - oldPos
+            self.ui.imageView.translate(delta.x(), delta.y())
 
 
-class Window(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self, parent=None):
-        super(Window, self).__init__(parent)
-        self.setWindowTitle("Hazy")
-        main = QSplitter(self)
-        self.setCentralWidget(main)
+        super(MainWindow, self).__init__(parent)
+
+        loader = QUiLoader()
+        loader.registerCustomWidget(ExprView)
+        self.ui = loader.load("mainwindow.ui", self)
 
         self.model = QStandardItemModel(1, 3)
         self.model.setHorizontalHeaderLabels(["Symbol", "Value", "Error"])
+        self.ui.values.setModel(self.model)
 
-        self.values = QTableView()
-        self.values.setModel(self.model)
+        self.ui.typeBox.addItems(["text", "LaTex"])
 
-        upholder, downholder = self.construct_left()
-        leftholder = QSplitter()
-        leftholder.setOrientation(Qt.Vertical)
-        leftholder.addWidget(upholder)
-        leftholder.addWidget(downholder)
+        self.connectSignals()
 
-        addButton = QPushButton("+")
-        addButton.clicked.connect(self.addRow)
-
-        removeButton = QPushButton("-")
-        removeButton.clicked.connect(self.removeRow)
-
-        clearButton = QPushButton("Clear")
-        clearButton.clicked.connect(self.clearValues)
-
-        buttonsLayout = QHBoxLayout()
-        buttonsLayout.addWidget(addButton)
-        buttonsLayout.addWidget(removeButton)
-        buttonsLayout.addWidget(clearButton)
-
-        rightLayout = QVBoxLayout()
-        rightLayout.addWidget(self.values)
-        rightLayout.addLayout(buttonsLayout)
-
-        rightholder = QWidget()
-        rightholder.setLayout(rightLayout)
-
-        main.addWidget(leftholder)
-        main.addWidget(rightholder)
-        self.setMinimumSize(800, 600)
         self.dialog = QErrorMessage()
+
+    def connectSignals(self):
+        self.ui.addRowButton.clicked.connect(self.addRow)
+        self.ui.removeRowButton.clicked.connect(self.removeRow)
+        self.ui.clearButton.clicked.connect(self.clearValues)
+
+        self.ui.calcButton.clicked.connect(self.compute)
+        self.ui.evalButton.clicked.connect(self.eval)
 
     def addRow(self):
         self.model.appendRow([])
@@ -134,59 +137,11 @@ class Window(QMainWindow):
     def clearValues(self):
         self.model.removeRows(0, self.model.rowCount())
 
-    def construct_left(self):
-        vlayout = QVBoxLayout()
-
-        self.typeBox = QComboBox()
-        self.typeBox.addItems(["text", "LaTex"])
-
-        self.input = QTextEdit()
-        self.input.setPlaceholderText("Input expression")
-
-        inlayout = QHBoxLayout()
-        inlayout.addWidget(self.typeBox)
-        inlayout.addWidget(self.input)
-        inholder = QWidget()
-        inholder.setLayout(inlayout)
-
-        self.symInput = QLineEdit()
-        self.symInput.setPlaceholderText("Comma separated vyriables")
-        vlayout.addWidget(self.symInput)
-
-        self.cmpButton = QPushButton("Compute")
-        self.cmpButton.clicked.connect(self.compute)
-
-        self.evalButton = QPushButton("Eval")
-        self.evalButton.clicked.connect(self.eval)
-
-        blayout = QHBoxLayout()
-        blayout.addWidget(self.cmpButton)
-        blayout.addWidget(self.evalButton)
-        vlayout.addLayout(blayout)
-
-        self.result = QLineEdit()
-        self.result.setPlaceholderText("Numerical result")
-        vlayout.addWidget(self.result)
-
-        self.preview = ExprView(self, "Input preview", self.cmpButton)
-
-        self.final = ExprView(self, "Final expression", self.cmpButton)
-
-        exprlayout = QHBoxLayout()
-        exprlayout.addWidget(self.preview)
-        exprlayout.addWidget(self.final)
-        vlayout.addLayout(exprlayout)
-
-        downholder = QWidget()
-        downholder.setLayout(vlayout)
-
-        return inholder, downholder
-
     def cmpTest(self):
-        if self.input.toPlainText() == "":
+        if self.ui.input.toPlainText() == "":
             self.dialog.showMessage("Input expression is empty!")
             return False
-        if self.symInput.text() == "":
+        if self.ui.symInput.text() == "":
             self.dialog.showMessage("No symbols to differentiate by!")
             return False
 
@@ -210,8 +165,8 @@ class Window(QMainWindow):
         self.data = self.getData()
         try:
             self.expr, self.finalExpr = hazy.compute(self.data)
-            self.preview.showExpression(self.expr)
-            self.final.showExpression(self.finalExpr)
+            self.ui.preview.showExpression(self.expr)
+            self.ui.final.showExpression(self.finalExpr)
         except:
             e = sys.exc_info()[0]
             print(traceback.format_exc())
@@ -225,7 +180,7 @@ class Window(QMainWindow):
         try:
             value = hazy.eval(self.expr, values)
             error = hazy.eval(self.finalExpr, values)
-            self.result.setText(str(value) + "+-" + str(error))
+            self.ui.result.setText(str(value) + "+-" + str(error))
         except:
             e = sys.exc_info()[0]
             print(traceback.format_exc())
@@ -234,9 +189,9 @@ class Window(QMainWindow):
     def getData(self):
         data = {}
 
-        expr = {"format": self.typeBox.currentText().lower(), "value": self.input.toPlainText()}
+        expr = {"format": self.ui.typeBox.currentText().lower(), "value": self.ui.input.toPlainText()}
         data["expr"] = expr
-        data["symbols"] = self.symInput.text().split(",")
+        data["symbols"] = self.ui.symInput.text().split(",")
 
         return data
 
@@ -258,15 +213,8 @@ class Window(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    loader = QUiLoader()
-    loader.registerCustomWidget(ExprView)
 
-    mainFile = QFile("mainwindow.ui")
-    mainFile.open(QFile.ReadOnly)
-    window = loader.load(mainFile)
-
-    mainFile.close()
-    #window = ExprView(None)
-    window.show()
+    w = MainWindow()
+    w.show()
 
     sys.exit(app.exec_())
