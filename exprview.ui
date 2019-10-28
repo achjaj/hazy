@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>View</class>
- <widget class="QStackedWidget" name="View">
+ <class>view</class>
+ <widget class="QStackedWidget" name="view">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -12,6 +12,9 @@
   </property>
   <property name="windowTitle">
    <string>StackedWidget</string>
+  </property>
+  <property name="currentIndex">
+   <number>1</number>
   </property>
   <widget class="QWidget" name="page">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -45,7 +48,7 @@
     <item>
      <widget class="QProgressBar" name="progressBar">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>

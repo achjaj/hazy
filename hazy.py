@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from threading import Thread
 
 import libhazy as hazy
 import sys
@@ -8,18 +9,27 @@ from PySide2.QtGui import *
 from PySide2.QtUiTools import *
 from pathlib import Path
 import traceback
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Pipe
 from sympy import simplify as simplifyExpr
 
+
 def simJob(expr):
-    return simplifyExpr(expr)
+    print("simplify start")
+    simplified = simplifyExpr(expr)
+    print("simplify stop")
+    return simplified
 
 
 class ExprView(QStackedWidget):
     def __init__(self, parent):
         super(ExprView, self).__init__(parent)
-        loader = QUiLoader()
-        self.ui = loader.load("exprview.ui", self)
+
+        self.loader = QUiLoader()
+        self.ui = self.loader.load("exprview.ui")
+
+        self.addWidget(self.ui.page)
+        self.addWidget(self.ui.page_2)
+
         self.ui.saveButton.clicked.connect(self.save)
         self.ui.simplifyButton.clicked.connect(self.simplify)
         self.ui.cancelButton.clicked.connect(self.cancel)
@@ -28,8 +38,12 @@ class ExprView(QStackedWidget):
         self.ui.imageView.setScene(self.imageScene)
         self.dialog = QErrorMessage()
 
+        self.emitter = QObject()
+        self.connect(self.emitter, SIGNAL("data(PyObject)"), self.simplifyResult)
+
     def showExpression(self, expr):
         tempFile = QTemporaryFile("hazy-")
+        self.imageScene.clear()
         if tempFile.open():
             try:
                 tempFile.close()
@@ -58,8 +72,10 @@ class ExprView(QStackedWidget):
             self.dialog.showMessage("Cannot export expression!\n" + traceback.format_exc())
 
     def poolCallback(self, result):
+        self.emitter.emit(SIGNAL("data(PyObject)"), result)
+
+    def simplifyResult(self, result):
         self.setCurrentIndex(0)
-        #self.compute.setEnabled(True)
         self.showExpression(result)
 
     def simplify(self):
@@ -71,7 +87,6 @@ class ExprView(QStackedWidget):
 
         if ret == QMessageBox.Yes:
             self.setCurrentIndex(1)
-            #self.compute.setEnabled(False)
             self.pool = Pool(processes=cpu_count() - 1)
             self.pool.apply_async(simJob, (self.current,), callback=self.poolCallback)
 
@@ -79,7 +94,6 @@ class ExprView(QStackedWidget):
         self.pool.terminate()
         self.pool.join()
         self.setCurrentIndex(0)
-        self.compute.setEnabled(True)
 
     def wheelEvent(self, event):
         if hasattr(self, "current"):

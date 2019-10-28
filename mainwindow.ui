@@ -81,10 +81,10 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
-           <widget class="ExprView" name="preview"/>
+           <widget class="ExprView" name="preview" />
           </item>
           <item>
-           <widget class="ExprView" name="final"/>
+           <widget class="ExprView" name="final" />
           </item>
          </layout>
         </item>
