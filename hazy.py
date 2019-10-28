@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from threading import Thread
 
 import libhazy as hazy
 import sys
@@ -8,18 +9,27 @@ from PySide2.QtGui import *
 from PySide2.QtUiTools import *
 from pathlib import Path
 import traceback
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Pipe
 from sympy import simplify as simplifyExpr
 
+
 def simJob(expr):
-    return simplifyExpr(expr)
+    print("simplify start")
+    simplified = simplifyExpr(expr)
+    print("simplify stop")
+    return simplified
 
 
 class ExprView(QStackedWidget):
     def __init__(self, parent):
         super(ExprView, self).__init__(parent)
-        loader = QUiLoader()
-        self.ui = loader.load("exprview.ui", self)
+
+        self.loader = QUiLoader()
+        self.ui = self.loader.load("exprview.ui")
+
+        self.addWidget(self.ui.page)
+        self.addWidget(self.ui.page_2)
+
         self.ui.saveButton.clicked.connect(self.save)
         self.ui.simplifyButton.clicked.connect(self.simplify)
         self.ui.cancelButton.clicked.connect(self.cancel)
@@ -28,8 +38,12 @@ class ExprView(QStackedWidget):
         self.ui.imageView.setScene(self.imageScene)
         self.dialog = QErrorMessage()
 
+        self.emitter = QObject()
+        self.connect(self.emitter, SIGNAL("data(PyObject)"), self.simplifyResult)
+
     def showExpression(self, expr):
         tempFile = QTemporaryFile("hazy-")
+        self.imageScene.clear()
         if tempFile.open():
             try:
                 tempFile.close()
@@ -44,22 +58,41 @@ class ExprView(QStackedWidget):
                 self.dialog.showMessage("Cannot show expression!\n" + traceback.format_exc())
 
     def save(self):
-        fileName = QFileDialog.getSaveFileName(self, "Save expression", str(Path.home()),
-                                               "LaTex (*.tex);;PNG image (*.png)")
+        extensions = "LaTex (*.tex);;PNG image (*.png);;MathML (*.mathml *.xml);;DVI (*.dvi);;PDF (*.pdf);;PostScript (*.ps);;DOT (*.gv);;ASCII (*.txt);;Unicode (*.txt);;Text (*.txt)"
+        extensionsList = extensions.split(";;")
+        fileName = QFileDialog.getSaveFileName(self, "Save expression", str(Path.home()), extensions)
         try:
             if fileName[0] != "":
-                if fileName[1] == "LaTex (*.tex)":
+                if fileName[1] == extensionsList[0]:
                     hazy.saveToLaTex(fileName[0] + ".tex", self.current)
-                else:
+                elif fileName[1] == extensionsList[1]:
                     hazy.saveToImg(fileName[0] + ".png", self.current)
+                elif fileName[1] == extensionsList[2]:
+                    hazy.saveToMathML(fileName[0] + ".mathml", self.current)
+                elif fileName[1] == extensionsList[3]:
+                    hazy.saveToDVI(fileName[0] + ".dvi", self.current)
+                elif fileName[1] == extensionsList[4]:
+                    hazy.saveToPDF(fileName[0] + ".pdf", self.current)
+                elif fileName[1] == extensionsList[5]:
+                    hazy.saveToPS(fileName[0] + ".ps", self.current)
+                elif fileName[1] == extensionsList[6]:
+                    hazy.saveToDot(fileName[0] + ".gv", self.current)
+                elif fileName[1] == extensionsList[7]:
+                    hazy.saveToASCII(fileName[0] + ".txt", self.current)
+                elif fileName[1] == extensionsList[8]:
+                    hazy.saveToUnicode(fileName[0] + ".txt", self.current)
+                elif fileName[1] == extensionsList[9]:
+                    hazy.saveToText(fileName[0] + ".txt", self.current)
         except:
             e = sys.exc_info()[0]
             print(traceback.format_exc())
             self.dialog.showMessage("Cannot export expression!\n" + traceback.format_exc())
 
     def poolCallback(self, result):
+        self.emitter.emit(SIGNAL("data(PyObject)"), result)
+
+    def simplifyResult(self, result):
         self.setCurrentIndex(0)
-        #self.compute.setEnabled(True)
         self.showExpression(result)
 
     def simplify(self):
@@ -71,7 +104,6 @@ class ExprView(QStackedWidget):
 
         if ret == QMessageBox.Yes:
             self.setCurrentIndex(1)
-            #self.compute.setEnabled(False)
             self.pool = Pool(processes=cpu_count() - 1)
             self.pool.apply_async(simJob, (self.current,), callback=self.poolCallback)
 
@@ -79,7 +111,6 @@ class ExprView(QStackedWidget):
         self.pool.terminate()
         self.pool.join()
         self.setCurrentIndex(0)
-        self.compute.setEnabled(True)
 
     def wheelEvent(self, event):
         if hasattr(self, "current"):

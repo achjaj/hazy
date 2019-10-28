@@ -8,10 +8,52 @@ def saveToImg(name, expr):
     f.close()
 
 
-def saveToLaTex(name, expr):
-    f = open(name, "w")
-    f.write(sympy.latex(expr))
+def saveToDVI(name, expr):
+    f = open(name, "wb")
+    sympy.preview(expr, viewer="BytesIO", outputbuffer=f, euler=False, output="dvi")
     f.close()
+
+
+def saveToPDF(name, expr):
+    f = open(name, "wb")
+    sympy.preview(expr, viewer="BytesIO", outputbuffer=f, euler=False, output="pdf")
+    f.close()
+
+
+def saveToPS(name, expr):
+    f = open(name, "wb")
+    sympy.preview(expr, viewer="BytesIO", outputbuffer=f, euler=False, output="postscript")
+    f.close()
+
+
+def __saveTo(name, text):
+    f = open(name, "w")
+    f.write(text)
+    f.close()
+
+
+def saveToLaTex(name, expr):
+    __saveTo(name, sympy.latex(expr))
+
+
+def saveToDot(name, expr):
+    __saveTo(name, sympy.printing.dotprint(expr))
+
+
+def saveToMathML(name, expr):
+    __saveTo(name, sympy.printing.mathml(expr))
+
+
+def saveToASCII(name, expr):
+    __saveTo(name, sympy.pretty(expr, use_unicode=False))
+
+
+def saveToUnicode(name, expr):
+    __saveTo(name, sympy.pretty(expr, use_unicode=True))
+
+
+def saveToText(name, expr):
+    __saveTo(name, str(expr))
 
 
 def compute(data):
