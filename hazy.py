@@ -150,6 +150,8 @@ class MainWindow(QMainWindow):
         self.dialog = QErrorMessage()
         self.ui.splitter.setSizes([517, 332])
 
+        self.setWindowTitle("Hazy")
+
     def connectSignals(self):
         self.ui.addRowButton.clicked.connect(self.addRow)
         self.ui.removeRowButton.clicked.connect(self.removeRow)
@@ -244,6 +246,7 @@ class MainWindow(QMainWindow):
 
 
 def start():
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
 
     w = MainWindow()
