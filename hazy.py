@@ -148,6 +148,7 @@ class MainWindow(QMainWindow):
         self.connectSignals()
 
         self.dialog = QErrorMessage()
+        self.ui.splitter.setSizes([517, 332])
 
     def connectSignals(self):
         self.ui.addRowButton.clicked.connect(self.addRow)
